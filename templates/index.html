@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Consumption Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input {
+            width: 100px;
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            background: blue;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        h2 {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Energy Consumption Prediction</h1>
+    <p>Enter 10 feature values and get a prediction.</p>
+    
+    <form action="/predict" method="post">
+        <input type="number" step="any" name="feature1" required>
+        <input type="number" step="any" name="feature2" required>
+        <input type="number" step="any" name="feature3" required>
+        <input type="number" step="any" name="feature4" required>
+        <input type="number" step="any" name="feature5" required>
+        <input type="number" step="any" name="feature6" required>
+        <input type="number" step="any" name="feature7" required>
+        <input type="number" step="any" name="feature8" required>
+        <input type="number" step="any" name="feature9" required>
+        <input type="number" step="any" name="feature10" required>
+        <br><br>
+        <button type="submit">Predict</button>
+    </form>
+
+    <h2>{{ prediction_text }}</h2>
+</body>
+</html>
