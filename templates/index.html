@@ -7,52 +7,70 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
             text-align: center;
             padding: 20px;
+            background: linear-gradient(135deg, #83a4d4, #b6fbff); /* Gradient design */
+            color: #333;
         }
         form {
             background: white;
             padding: 20px;
             display: inline-block;
             border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
         }
         input {
-            width: 100px;
             padding: 8px;
             margin: 5px;
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+        input[type="file"] {
+            width: 300px;
+        }
         button {
-            padding: 10px 15px;
-            background: blue;
+            padding: 10px 20px;
+            background: #4caf50; /* Green button */
             color: white;
             border: none;
             cursor: pointer;
             border-radius: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049; /* Slightly darker green on hover */
+        }
+        h1 {
+            color: #083d77;
+        }
+        p {
+            color: #555;
         }
         h2 {
             color: green;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <h1>Energy Consumption Prediction</h1>
-    <p>Enter 10 feature values and get a prediction.</p>
+    <p>Upload a file or enter 10 feature values for prediction.</p>
     
-    <form action="/predict" method="post">
-        <input type="number" step="any" name="feature1" required>
-        <input type="number" step="any" name="feature2" required>
-        <input type="number" step="any" name="feature3" required>
-        <input type="number" step="any" name="feature4" required>
-        <input type="number" step="any" name="feature5" required>
-        <input type="number" step="any" name="feature6" required>
-        <input type="number" step="any" name="feature7" required>
-        <input type="number" step="any" name="feature8" required>
-        <input type="number" step="any" name="feature9" required>
-        <input type="number" step="any" name="feature10" required>
+    <form action="/predict" method="post" enctype="multipart/form-data">
+        <label for="file">Choose a file:</label>
+        <input type="file" name="file" id="file">
+        <br><br>
+        <p>Or manually enter values:</p>
+        <input type="number" step="any" name="feature1">
+        <input type="number" step="any" name="feature2">
+        <input type="number" step="any" name="feature3">
+        <input type="number" step="any" name="feature4">
+        <input type="number" step="any" name="feature5">
+        <input type="number" step="any" name="feature6">
+        <input type="number" step="any" name="feature7">
+        <input type="number" step="any" name="feature8">
+        <input type="number" step="any" name="feature9">
+        <input type="number" step="any" name="feature10">
         <br><br>
         <button type="submit">Predict</button>
     </form>
@@ -60,3 +78,4 @@
     <h2>{{ prediction_text }}</h2>
 </body>
 </html>
+
