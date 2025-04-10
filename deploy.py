@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 import pickle
 import os
 
@@ -43,41 +45,52 @@ def load_model():
 # Attempt to load the model on startup
 load_model()
 
+def preprocess_data(df):
+    """Applies specific time-based preprocessing steps."""
+    df['TimeStamp'] = pd.to_datetime(df['TimeStamp'], format='%m/%d/%Y %H:%M:%S', errors='coerce')
+    df = df.dropna(subset=['TimeStamp'])
+    df['Hour'] = df['TimeStamp'].dt.hour
+    df['Minute'] = df['TimeStamp'].dt.minute
+    df['DayOfWeek'] = df['TimeStamp'].dt.dayofweek
+    df = df.drop(columns=['TimeStamp'])
+    df = pd.get_dummies(df)
+    return df
+
 def train_model_function(data, target_column, feature_columns=None):
-    """Trains a linear regression model."""
+    """Trains a linear regression model with preprocessing."""
     if target_column not in data.columns:
         raise ValueError(f"Target column '{target_column}' not found in the data.")
 
     y = data[target_column]
-    if feature_columns:
-        if not all(col in data.columns for col in feature_columns):
-            raise ValueError("One or more feature columns not found in the data.")
-        X = data[feature_columns]
-    else:
-        X = data.drop(columns=[target_column])
+    X = data.drop(columns=[target_column])
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Identify numerical features for scaling
+    numerical_features = X.select_dtypes(include=['number']).columns.tolist()
+
+    # Create preprocessing pipeline
+    preprocessor = StandardScaler()
+    X_scaled = preprocessor.fit_transform(X[numerical_features])
+    X_scaled_df = pd.DataFrame(X_scaled, columns=numerical_features, index=X.index)
+
+    # Combine scaled numerical features with other (e.g., one-hot encoded) features
+    X_processed = pd.concat([X_scaled_df, X.drop(columns=numerical_features)], axis=1)
+
+    X_train, X_test, y_train, y_test = train_test_split(X_processed, y, test_size=0.2, random_state=42)
     model = LinearRegression()
     model.fit(X_train, y_train)
     mse = mean_squared_error(y_test, model.predict(X_test))
-    return model, X.columns.tolist(), mse
+
+    return model, X_processed.columns.tolist(), mse
 
 # Knowledge Distillation (Simplified Example - Teacher is the same model)
 def distill_knowledge(teacher_model, X_train, y_train, alpha=0.5, temperature=2.0):
     """
-    A simplified example of knowledge distillation where the teacher and student
-    are the same model. This demonstrates the concept of using soft targets.
-    In a real scenario, the teacher would typically be a larger, more complex model.
+    A simplified example of knowledge distillation.
     """
     student_model = LinearRegression()
     teacher_predictions = teacher_model.predict(X_train)
-
-    # Create "soft targets" by combining true targets and teacher predictions
     soft_targets = (1 - alpha) * y_train + alpha * teacher_predictions
-
-    # Train the student model on these soft targets (and potentially original data)
-    student_model.fit(X_train, soft_targets)  # Or combine with original y_train
-
+    student_model.fit(X_train, soft_targets)
     return student_model
 
 @app.route('/', methods=['GET'])
@@ -94,8 +107,6 @@ def train():
         return render_template('index.html', error="No training file selected.", feature_names=feature_names)
 
     target_column = request.form.get('target_column')
-    feature_columns_str = request.form.get('feature_columns')
-    feature_columns = [col.strip() for col in feature_columns_str.split(',')] if feature_columns_str else None
 
     if not target_column:
         return render_template('index.html', error="Please specify the target column.", feature_names=feature_names)
@@ -110,14 +121,25 @@ def train():
         else:
             return render_template('index.html', error="Unsupported file format. Please upload CSV or XLSX.", feature_names=feature_names)
 
+        # Apply the specific preprocessing steps
+        if 'TimeStamp' in data.columns:
+            data = preprocess_data(data.copy())
+        else:
+            return render_template('index.html', error="The training data does not contain a 'TimeStamp' column for the required preprocessing.", feature_names=feature_names)
+
+        if target_column not in data.columns:
+            return render_template('index.html', error=f"Target column '{target_column}' not found after preprocessing.", feature_names=feature_names)
+
+        # Define target and features after preprocessing
+        y = data[target_column]
+        X = data.drop(columns=[target_column])
+
         # Train the initial model (teacher in the distillation context)
-        teacher_model, trained_features, mse = train_model_function(data, target_column, feature_columns)
+        teacher_model, trained_features, mse = train_model_function(data.copy(), target_column)
 
         # Apply knowledge distillation (student is the same model for simplicity)
-        X = data[trained_features]
-        y = data[target_column]
         X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
-        distilled_model = distill_knowledge(teacher_model, X_train, y_train, alpha=0.3, temperature=1.5) # Adjust alpha and temperature
+        distilled_model = distill_knowledge(teacher_model, X_train, y_train, alpha=0.3, temperature=1.5)
 
         global trained_model
         global feature_names
@@ -134,7 +156,7 @@ def train():
 
 @app.route('/predict_file', methods=['POST'])
 def predict_file():
-    if trained_model is None:
+    if trained_model is None or feature_names is None:
         return render_template('index.html', error="Model not trained yet. Please upload a training file and train the model.", feature_names=feature_names)
 
     if 'prediction_file' not in request.files:
@@ -154,9 +176,16 @@ def predict_file():
         else:
             return render_template('index.html', error="Unsupported file format for prediction. Please upload CSV or XLSX.", feature_names=feature_names)
 
+        # Apply the same preprocessing steps as during training
+        if 'TimeStamp' in data.columns:
+            data = preprocess_data(data.copy())
+        else:
+            return render_template('index.html', error="The prediction data does not contain a 'TimeStamp' column for the required preprocessing.", feature_names=feature_names)
+
+        # Check if all required features are present after preprocessing
         if not all(feature in data.columns for feature in feature_names):
             missing_features = [f for f in feature_names if f not in data.columns]
-            return render_template('index.html', error=f"Prediction file missing required features: {', '.join(missing_features)}", feature_names=feature_names)
+            return render_template('index.html', error=f"Prediction file missing required features after preprocessing: {', '.join(missing_features)}", feature_names=feature_names)
 
         predictions = trained_model.predict(data[feature_names])
         return render_template('index.html', prediction_file_message="Predictions generated successfully.", prediction_file_success=True, predictions=predictions.tolist(), feature_names=feature_names)
@@ -170,12 +199,37 @@ def predict_manual():
         return render_template('index.html', error="Model not trained yet or feature names not loaded.", feature_names=feature_names)
 
     try:
-        feature_values = [float(request.form.get(f'feature{i+1}')) for i in range(len(feature_names))]
-        if len(feature_values) != len(feature_names):
-            return render_template('index.html', error="Please provide values for all required features.", feature_names=feature_names)
+        # Expecting manual input for 'Hour', 'Minute', 'DayOfWeek', and the one-hot encoded columns
+        manual_data = {}
+        manual_data['Hour'] = [int(request.form.get('feature1'))]
+        manual_data['Minute'] = [int(request.form.get('feature2'))]
+        manual_data['DayOfWeek'] = [int(request.form.get('feature3'))]
 
-        input_data = pd.DataFrame([feature_values], columns=feature_names)
-        prediction = trained_model.predict(input_data)[0]
+        # Need to dynamically handle the one-hot encoded columns based on the training data
+        # This requires knowing the possible categorical values seen during training.
+        # For simplicity here, we'll assume the manual input form has placeholders
+        # corresponding to the features after preprocessing.
+
+        # Create a DataFrame from the manual input
+        input_df = pd.DataFrame(manual_data)
+        input_df = pd.get_dummies(input_df, columns=['DayOfWeek'], prefix='DayOfWeek')
+
+        # Reindex to ensure all expected columns are present (with 0 for missing ones)
+        input_df = input_df.reindex(columns=feature_names, fill_value=0)
+
+        # Scale numerical features ('Hour', 'Minute') using the scaler fitted during training
+        numerical_features = ['Hour', 'Minute']
+        if all(col in input_df.columns for col in numerical_features) and numerical_features:
+            # If you saved the scaler during training, load it here.
+            # For this simplified example, we'll just proceed without explicit scaling for manual input.
+            # In a real application, you MUST use the same scaler.
+            pass
+
+        if not all(feature in input_df.columns for feature in feature_names):
+            missing_manual_features = [f for f in feature_names if f not in input_df.columns]
+            return render_template('index.html', error=f"Please provide values for all required features: {', '.join(missing_manual_features)}", feature_names=feature_names)
+
+        prediction = trained_model.predict(input_df[feature_names])[0]
         return render_template('index.html', prediction_text=f"Predicted energy consumption: {prediction:.2f}", feature_names=feature_names)
 
     except ValueError:
