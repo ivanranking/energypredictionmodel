@@ -8,7 +8,7 @@ from sklearn.pipeline import Pipeline
 import pickle
 import os
 
-app = Flask(__name__)
+app = Flask(SmartEnergyAI)
 
 # Directory to save uploaded files and the trained model
 UPLOAD_FOLDER = 'uploads'
