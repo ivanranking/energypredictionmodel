@@ -4,11 +4,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
 import pickle
 import os
 
-app = Flask(SmartEnergyAI)
+app = Flask(__name__)
 
 # Directory to save uploaded files and the trained model
 UPLOAD_FOLDER = 'uploads'
@@ -52,18 +51,16 @@ def load_model_artifacts():
 load_model_artifacts()
 
 def preprocess_data(df):
-    """Applies specific time-based preprocessing steps."""
     df['TimeStamp'] = pd.to_datetime(df['TimeStamp'], format='%m/%d/%Y %H:%M:%S', errors='coerce')
     df = df.dropna(subset=['TimeStamp'])
     df['Hour'] = df['TimeStamp'].dt.hour
     df['Minute'] = df['TimeStamp'].dt.minute
     df['DayOfWeek'] = df['TimeStamp'].dt.dayofweek
     df = df.drop(columns=['TimeStamp'])
-    df = pd.get_dummies(df, columns=['DayOfWeek'], prefix='DayOfWeek') # Explicit one-hot encoding
+    df = pd.get_dummies(df, columns=['DayOfWeek'], prefix='DayOfWeek')
     return df
 
 def train_model_function(data, target_column, feature_columns=None):
-    """Trains a linear regression model with preprocessing."""
     if target_column not in data.columns:
         raise ValueError(f"Target column '{target_column}' not found in the data.")
 
@@ -88,11 +85,7 @@ def train_model_function(data, target_column, feature_columns=None):
 
     return model, X_processed.columns.tolist(), preprocessor, mse
 
-# Knowledge Distillation (Simplified Example - Teacher is the same model)
 def distill_knowledge(teacher_model, X_train, y_train, alpha=0.5, temperature=2.0):
-    """
-    A simplified example of knowledge distillation.
-    """
     student_model = LinearRegression()
     teacher_predictions = teacher_model.predict(X_train)
     soft_targets = (1 - alpha) * y_train + alpha * teacher_predictions
@@ -105,6 +98,10 @@ def index():
 
 @app.route('/train', methods=['POST'])
 def train():
+    global trained_model
+    global feature_names
+    global preprocessor
+
     if 'training_file' not in request.files:
         return render_template('index.html', error="No training file uploaded.", feature_names=feature_names)
 
@@ -127,7 +124,6 @@ def train():
         else:
             return render_template('index.html', error="Unsupported file format. Please upload CSV or XLSX.", feature_names=feature_names)
 
-        # Apply the specific preprocessing steps
         if 'TimeStamp' in data.columns:
             data = preprocess_data(data.copy())
         else:
@@ -144,9 +140,6 @@ def train():
         X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
         distilled_model = distill_knowledge(teacher_model, X_train, y_train, alpha=0.3, temperature=1.5)
 
-        global trained_model
-        global feature_names
-        global preprocessor
         trained_model = distilled_model
         feature_names = trained_features
         preprocessor = trained_preprocessor
@@ -190,7 +183,6 @@ def predict_file():
             missing_features = [f for f in feature_names if f not in data.columns]
             return render_template('index.html', error=f"Prediction file missing required features after preprocessing: {', '.join(missing_features)}", feature_names=feature_names)
 
-        # Apply scaling to numerical features in the prediction data
         numerical_features = ['Hour', 'Minute']
         numerical_cols_present = [col for col in numerical_features if col in data.columns]
         if numerical_cols_present:
