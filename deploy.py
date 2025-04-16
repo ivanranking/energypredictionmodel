@@ -227,5 +227,7 @@ def predict_manual():
     except Exception as e:
         return render_template('index.html', error=f"An error occurred during manual prediction: {str(e)}", feature_names=feature_names)
 
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
