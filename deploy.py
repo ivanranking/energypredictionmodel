@@ -29,6 +29,8 @@ PREPROCESSOR_PATH = os.path.join(MODEL_FOLDER, 'preprocessor.pkl')
 trained_model = None
 feature_names = None
 preprocessor = None
+training_data = None  # To store the training data
+target_column_name = None
 
 # Mapping of model types to their classes
 MODEL_TYPES = {
@@ -156,7 +158,7 @@ def train_model_function(data, target_column, model_type='linear', polynomial_de
     y_pred = pipeline.predict(X_test)
     mse = mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
-    return pipeline, X.columns.tolist(), preprocessor, mse, r2
+    return pipeline, X.columns.tolist(), preprocessor, mse, r2, data
 
 def distill_knowledge(teacher_model, X_train, y_train, student_model_type='linear', alpha=0.5, temperature=2.0):
     """
@@ -205,6 +207,8 @@ def train():
     global trained_model
     global feature_names
     global preprocessor
+    global training_data
+    global target_column_name
 
     if 'training_file' not in request.files:
         return render_template('index.html', error="No training file uploaded.", feature_names=feature_names)
@@ -215,7 +219,7 @@ def train():
 
     target_column = request.form.get('target_column')
     model_type = request.form.get('model_type', 'linear')  # Default to linear if not provided
-    polynomial_degree = int(request.form.get('polynomial_degree', 1)) # default to 1
+    polynomial_degree = int(request.form.get('polynomial_degree', 1))  # default to 1
 
     if not target_column:
         return render_template('index.html', error="Please specify the target column.", feature_names=feature_names)
@@ -235,10 +239,11 @@ def train():
         if target_column not in data.columns:
             return render_template('index.html', error=f"Target column '{target_column}' not found after preprocessing.", feature_names=feature_names)
 
+        target_column_name = target_column
         y = data[target_column]
         X = data.drop(columns=[target_column])
 
-        teacher_model, trained_features, trained_preprocessor, mse, r2 = train_model_function(data.copy(), target_column, model_type, polynomial_degree)
+        teacher_model, trained_features, trained_preprocessor, mse, r2, training_data = train_model_function(data.copy(), target_column, model_type, polynomial_degree)
 
         X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
         distilled_model = distill_knowledge(teacher_model, X_train, y_train, student_model_type=model_type, alpha=0.3, temperature=1.5)
@@ -247,12 +252,17 @@ def train():
         feature_names = trained_features
         preprocessor = trained_preprocessor
         save_model_artifacts(trained_model, feature_names, preprocessor)
-        session['trained_model_type'] = model_type #save model type
+        session['trained_model_type'] = model_type  # save model type
+
+        # Make predictions on the training data
+        predictions = trained_model.predict(training_data[feature_names])
 
         return render_template('index.html',
-                               training_message=f"Model ({model_type}) trained successfully with MSE: {mse:.2f}, R^2: {r2:.2f}.",
+                               training_message=f"Model ({model_type}) trained successfully with MSE: {mse:.2f}, R^2: {r2:.2f}. Predictions on training data:",
                                training_success=True,
-                               feature_names=feature_names)
+                               feature_names=feature_names,
+                               predictions=predictions.tolist(),
+                               target_column_name=target_column)
 
     except ValueError as e:
         return render_template('index.html', error=str(e), feature_names=feature_names)
@@ -328,6 +338,7 @@ def predict_manual():
         if not all(feature in input_df.columns for feature in feature_names):
             missing_manual_features = [f for f in feature_names if f not in input_df.columns]
             return render_template('index.html', error=f"Please provide values for all required features: {', '.join(missing_manual_features)}", feature_names=feature_names)
+
         prediction = trained_model.predict(input_df[feature_names])[0]
         return render_template('index.html', prediction_text=f"Predicted energy consumption: {prediction:.2f}", feature_names=feature_names)
 
@@ -335,6 +346,7 @@ def predict_manual():
         return render_template('index.html', error="Invalid feature values entered. Please enter numeric values.", feature_names=feature_names)
     except Exception as e:
         return render_template('index.html', error=f"An error occurred during manual prediction: {str(e)}", feature_names=feature_names)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
