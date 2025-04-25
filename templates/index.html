@@ -3,79 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartEnergyAI</title>
+    <title>Energy Prediction Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #83a4d4, #b6fbff); /* Gradient design */
-            color: #333;
-        }
-        form {
-            background: white;
-            padding: 20px;
-            display: inline-block;
-            border-radius: 10px;
-            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        input {
-            padding: 8px;
-            margin: 5px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        input[type="file"] {
-            width: 300px;
-        }
-        button {
-            padding: 10px 20px;
-            background: #4caf50; /* Green button */
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background: #45a049; /* Slightly darker green on hover */
-        }
-        h1 {
-            color: #083d77;
-        }
-        p {
-            color: #555;
-        }
-        h2 {
-            color: green;
-            margin-top: 20px;
+            font-family: 'Inter', sans-serif;
         }
     </style>
 </head>
-<body>
-    <h1>SmartEnergyAI</h1>
-    <p>Upload a file or enter 10 feature values for prediction.</p>
-    
-    <form action="/predict" method="post" enctype="multipart/form-data">
-        <label for="file">Choose a file:</label>
-        <input type="file" name="file" id="file">
-        <br><br>
-        <p>Or manually enter values:</p>
-        <input type="number" step="any" name="feature1">
-        <input type="number" step="any" name="feature2">
-        <input type="number" step="any" name="feature3">
-        <input type="number" step="any" name="feature4">
-        <input type="number" step="any" name="feature5">
-        <input type="number" step="any" name="feature6">
-        <input type="number" step="any" name="feature7">
-        <input type="number" step="any" name="feature8">
-        <input type="number" step="any" name="feature9">
-        <input type="number" step="any" name="feature10">
-        <br><br>
-        <button type="submit">Predict</button>
-    </form>
+<body class="bg-cover bg-center bg-no-repeat" style="background-image: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxMTEhUTExMWFRUXGBcYGBcYFxcXGBgXFxUXFxcXFxcYHSggGBolHRUVITEhJSkrLi4uFx8zODMtNygtLisBCgoKDg0OGhAQGi0eHR8rLS0rKy0tKy0rLS0tLS0uLSsrLS0tLS0tLS0tLS0tLSstLS0tKy0tLS0tLS0tLSstLf/AABEIAJcBTgMBIgACEQEDEQH/xAAcAAACAgMBAQAAAAAAAAAAAAADBAUGAAIHAQj/xAA/EAABBAAEAwYDBQYFBAMAAAABAAIDEQQSITEFQVEGEyJhcYGRobEUMsHR8CNCUmKS4RUzcoLxB0NTsjSDov/EABkBAQEBAQEBAAAAAAAAAAAAAAABAgQDBf/EACMRAQEAAgICAgMAAwAAAAAAAAABAhESIQMxE0EEUWEiQnH/2gAMAwEAAhEDEQA/AKcW2hSxpkBeujtdDnAwrE25l7ITG0n4hogBDBqFKMj0QmNCZjUHrI0WOPVYxMQtQAyao2RDLfEjs3QegUjwhCcNUaNpRY9cdUYbLUhbtUV46PRaRNTUmyVukDEo0STAjtlsLyGPVAaFhCK2Kza8bYW4cipPDM0TUUaVw7w0eI16/wB0YY+IHV4+v0RqRMYaJSTMFajOG8ShP79+xU/FICNCvO1rjUZicAojE4OlankKH4gRqrKmlYnj1UfigpXEbpTEQ2tsoKdpQXNUo+BJyMRC3doGIjUiAlcaiUq1miUmZqpCIaJaRmqIRmw2lpR0KmnxaJV0FKiK7nRR0sWqm5AkJIdUSo5wSzodVJSQLTuFUJCILewER4ASeIdqiLCxiLkWsRRwVGgcqaY1bMiTIYg1jiTUUVLIwmGOACAbWJmFuiXdKmsMUGZKW8YXsz0NrjaApbqmoWpN51R45CiwcNXoCGXoiijsFhLYtlJiMpDiEhukG+FZomGGkrE7K23aD8ToAOpJ5KJ45xVjG/tP6N/TNycfl67oJaTizNwfD/Edj/oH7w89ulqv8S7aNZYZv13Px5e1Kk8V47JMSASAlsHg8xtx35AEk+i1jhll6W5TH2nMV2rledCfqgt4tMd3H4r3D4NthjfE4kWBy66/Uqbd2Ze8Uysw6v0rmTp8gvWfjfut4/kSVtwHjD2uFu+a6dwrtRTNSuKQvyPLZAQASCQNj8lZsLC4sDmOcW87B0+C8svx/wBOu+TGztbuNdry02DSQwnbm9HG/X81XWYYyOLS4mv3SKsdRqoziHBi3Vuiz8NnpjLPDWtOm4XisUmxonkmpRpouNYTiUkTtVdeBdproONgqd+q8Mp9xYJAl3MTpcHC26goJCrzLEJXHRp7KEviRaIThCBIzVNBiFKEQJw0SM5KeckplQiUrIdU1OaQGx2bRAS1LzSKSe0UoyerVKTmKjZ3G1KTqLxTharK2MCPGUKELYDVRpIRNNIjGkobCmIVBgaQvWtJK2spiIIFyxO4OLRaBmqkMOzRAvNGht3TmJCUa20GxFlMZEENW7XIPSNUw0GkkXG07E/ko1G8IQMTq5ONUbxTEiJrneRA9T/b6hFRHH+MtjGbpYYPai71Oo9PUrmuPxz536lG47xEyvOui14dhySKC348OVZzy4wSLCBjczth7Wf10Ux2ewr8RZ/y4ho5+5J50TpzHoAozjkLmgBxAHJu5o/vEcudIUD55GCFpd3bSSGjqTua3Prsvo4YydOa/wCU26fw37BhhXfRk1dl7ST+Avpoq/2p7V960xYdoazm/YuHTbQX8fTeM4HgTE7NJC2VtEFjnOF3zDgNwtsJh2NxDZJIx3ee3RZcwLDfgBJJqqF7/Vel4/TOF1ey3COIyxus07wlrQ8FwaDr4AT4TzBCsnZzhcz7e1zo21eYaDkNf4gnuE8MjfO7EvhbHhwczGC6JFBo8Q1bduJHPZWnCYwyA7R2SGE65mt01GgA33/FeGeep6dEy3SMPZ4F7JA8SEABxbnYGua0NzDkLo6a7keaNxDhFg0Af19VL/YzHDna1rbPja0OGXfQZroW46UNyoWDEvzCRwdk8uX8JPQddfPZcvPb0qlcX4WzVpBB67i/zVaY4xO3sciu1R8AE15iaGrQet638VSO03ZZzM4ynQ6EaCqvb1FKZccppmXKdidnOMbNJ0KtBGnkuU8LnLXV0/Vro/AsbnblO9aLml1eN9vWzrcEeCgzJ+RiSxRW2CedavctyF4QqhV7kvKjvBtCmaiEntXmRMPhte5NECz2aKJxDKKmMQ3RQeOJViUpOLURMNVIyk0ouU6qpPa8RNW5j1C8iKaBWWnjbTMC0YQUw0BAaMhHsILWhGyoNwnINklGdUwxyDzEuQQvXHVaoMdItmuQ3NWMbqgM3dScEWijWxeJTUDPClWNJaa1znaBoJPoBa55244kQMvPn67uHx09lfOLy5WZTzNn0aM2vqQB7ri/afGGSZ2ti1lqIlzuak+DY0NcDudgPM7nzUPIdFtFKdBWw61re/4Lqwy4dRjLHlE9isTK91kNJAy0CL53ZA16HXlXVMPxrGU28lffyvIBtwJq9W0AOvPRQQkOUAk1qa5WeaVkOui6LuTbzmEvS5cMZEPFnz3VZeenPM3+L9dZ842LmHnStaJrbU3v+SofBsY2ww6Hkev5K1YWO6J1HRayymplvp5cbLpP4Xjw+6f8trA0NqiS3TxA9efSlaOzGAzsJeS2NxIDXtLS3kQWuGo1I9lV8BwxzgZdQwa57DdjyG5N6Dz9FZ+E42LNTWSm2APeDbvA3fKTXJcvkz66evjx77WPD8Pfs0gnKbN0C2x5VspPB8OGz23bNydR1FUAPvHzUZi+0TMOG05pGXMQQQWggkeVX6bUlMF2k8XfOzlr6obMAJbdWLGmU1etm+q48sr7dUkWiPCtjjDXEaADMT6AHXr+KqnaHieGe7uWyBzy5zKrUPH3r28GUOJOxo68i/infaogNcjxQLRoHtdYzG82VwsUAdyqg7ByYXFMkcQ1gPjc4d5QzNc8tGvic1hZfIOPTTHLKZNamnPONYfu3599dT1F/oqy8GJABB1GoQ+2vDe7zAHM2yAR5dfOileyeKuNoO7CWH22+RHwXrnNyZfbzxurcVzdKC0OHP8AVJDFG0fDmw4dDfsf72lsQ5VmgtetO81Wy1LVUaSuSz3WizoDWaogp2Q7RXNQSEC2JcoTEalTGKbooac0VqJSOI0FKDxF2pzEnVRc41RJe10h2RrQWnREc6gstCQv1TzW2kcIRakg8ICVXNFjspd70xhwg3aNUdpWhdS1a5Bg3Ry0IUYW7d0BRhOaH3VFPYc2oLiXaBjC7u2OmLastHhs/dbm5k/giprDQ2VvxfirMLEXvdXIeZ8hzP8AZVXF4/FFwilPduLQ50cf3mh2rWl93evluqV224lnxogYT3eHIiAskGRpqV+u5L82vQBSrO3QeL8UZ9n711hpbXU25w+ZyfMrkOKxGdxd1K6B2i8XC2EcnsHxbOVzhrU/2i4+jWEohwNE6Zboa7Wb5AEleSQd2Be5+FJR7fNY0Emyb9V0TzTG9w+O0WWcEVzQQ1xs9NegR4cOXGmguPlqepKdGCectV4rrXXTckDb3V53y9rqYdJDh3DGPoFoB3scjudR0Us/iYhLaHeURYP3dNaJ5g9Frw7BSOHhLQRzIF31F9E43sg9/wC85xvoPivX5PHu8r05eGd7hrCcWfI7xOuQUe7c4+Jrtcrc21XyVk4bi2ZS/wATKsOD/CW+/pzVH4hgGwya+N4aCDmIp1eG65aDTok+F8ae0va8BzZNwdmm9HZRuPIeVbUvTyeCZYzj9+mcPJcbd/S9ycJxOIxJMUgijyV3gJ+65otoGma76+9qzdnOyc2HzDE4thY5pDYy1rnkn7pDngnl90Xuuf8ADO20kBaxjWODXDxEOPhs2MvhJ0Iomtlf+yWMOKiMsxLnF76sUMubTqB6AlcP5V8vj8fcnH167dP4+OGefW+V7Akw+KixLMjw2Mk5iTkj8BLacNgSBplu7vUbt4PiuY5JvHVnMRuNbB2sbC90Li8Zha5zhcI1dqcuujTQstdZHUaKBxk4b4m6MObKXEchveoOh32XDPLc9dfx08JhbLUf22Ic15Fse2gcrjT2nr10v59VWuzOKyukB55T76g/gj8W4tG8va02LA3saVdHmN1EskAktvMfkuuzKeO8ppzyy5zTpHCJ8xI6t+hW+KYobs/Nrp0P0Uo9xWcPS5ewqXkgRWOCHiHhaZKYkLSFxW0rr0WZCAqjaVyGt3jRAkdSAGJeofFUnsZIoPFy6qs2l8S9R8qJK6ygyBVIuEcqJNKoePEJnv8ARZ01s/FKmo5NVGwG0zsglI3Wm4n0oiKVE+0obTRlCJmFKIinTfeaIp2B6KHBR+GkTuDwolljiccrXk5zt+zYwvf8m17qDOBxOxf2iYh32XD+ENGjsTOQC2MHkzxMHmXjlatHDezcOHdHHIQ5uGjOKxDv/JPJma15/ka2KamnamdFGYLjuFjgwGHjIaMTimzUfDlhM0uIjJJ2/wAqJteahuO9sO+wXGZWX439wyyNIg2CA11B7yZ3+5edtr0kkJ9jnSS4qXF4hoa0l80hcRmz92J2wsaaJDISwk8hQ6rjMUv7QPcbJdmJO5JNkqf7O4h8mJaC9xe9uLs59C+fDPaTkoU4nQnnTRyVYadQpa1I65jcTFPwlgZo9rKfp+9DK9l+7Zm/BctdauPZA290e4cZGlvQPYHsI8s8dKrcQhLZHtrmVv0zCT05h4bHK+V67eQFoeHitwvRMOcGvzMJ0As18/ot9ct1rd1qJ7grMrgQ0DM0jbxHWjVaDXTkrLhGUAwgAHcgVvYrX1rboq5wbHuLm5ht8xtRVsZK2qyg2dPT9Wum2ceq5bvl2Yw8TGmmagfMqXwGMrkGn1ChsOMl2RR6IzIhptlO93flry/uuHKR1Y2xMTwRz33kbX2CNhevQnYpjsz2ZwkedzalbJ4Rnax+WrzNuufpySkVM0APLXoL2Hmm+HcXDswZ9waXWtm7NrHy5zG4y9PTjjcpddn39kMDeZuHYHVu3ONzZ8Oavkko+OsinMJjDGsGZojaGhza1yt63uPfknYsTTTrtt5aqr9qYs7cwIL2uzNcNKduedAaAf8AC88L8l4+W3V/vr+tZz4/8sJN/wDPa2M4j3jbIBa8EFpFgtI1aeW1hV/iPZrDMbLbbYfGdRTWxtOgPnZs+fKkl2f44H+EjLWmUn7pGgGvodavdV7t92mL2mGN2n/cI56imA/WvzW/D4fLj5L45uftPJ5PHnjM7q36UVkuunVSED/EPL81H8NfT9W5gQdPoR70pLh7M0mnX8V3+fLeLkwx1kvHAYi0BxGhDq9RX5hSEk6yYZIIW8yHOPoSAP8A1UNi5l4Yzpcr2lGzBazu0URFN5pwy6K6Z2YjCK94pR5xFBKz8Q0Q2enxISc2I0UVPiyUu/FlXSbOYycUoKWXVFxOL0UU+ZPRrY8jwtC9Lveszptris0HDnc1Iw4BNQvHRORSjops0Wh4dXNMtwo5ppk3kiBwKi6LswzUdmEYmGwAp7D4RvNNmicWEYOScjwreifjhj6LdsLdgFNmiMeFaDsoPtxP3TW5SG5sPjBZBOpia2hWxOYi/NWyLhzjsojtp2efPHGwA5v2zR6uw8haP9z2Mb/uCK5HgsW/v8MWOJLWR5QLJDgHNArl6DqpHgeCnxEEsTD4ZM1DXxvETpW15kQPGvOuqunBux8UEkZc9okic6FrwdJJXCPEYNzb5PAnaDzOQKzYDCxsD48M3K+Nwlis5Q5k8v2nC2Rs0StfhndBdiiptVLZ2WZEzh2MiZRM+Gc/eyScr47J1PeDLtuVzPtBwx2GxM+HddxSPZZ5hriA73FH3X0niOHtxEMsMbsjJmfaMOSNWF5DyA0jRzJQHVyzLkP/AFMwrpO64gG1J4YcS0gOyzR2GOcCKcHBhZqKJiPVZyaxrX/ppjGxYmN+XOHtMbrIDQ+g6K/9zXNP+oLT/qJw1rJjLH915zChydqPqqngccWiySHZrsctNCBtYcGuHor7NjmYzDAOADzmLK5Vq9ldGvNj+V/kntn1XPhum8FFmcACAb/R9UvPEWOLTuCtMPLRB6LeFkva2WzpLQh0Zy8xsevqpbC8QJo9PnruPPVQc8jTWp81tBM7Vosjn5DrfL1XvlhjZ1Xh37WuHil/ecn48aHaF2nkufDFanxJ2PGkC79wuXjXrLZ7dQi4vGAATXIXqT8ea0xHEI+R33Oi5l/jJPP5rQ8Tdd2fcrNx3Gp5NOoP462r0AqvZVziHGTmppFH4a9VVHcTJFFxKJHiCWObbatpNgX4boA7ga60sTxxq+W1NF4dZzZCfvUNTqefXXdV3tK9neNijFNYNepcdTZ9AE0eJBmZryRuQBtm0oWboeepUUx3ic5w3sizrrtZ/W66vHz+7087qTqPYRVeytnY/hpkeK5kBVvBRF5AXWuxvCC2JzzoaytPmdyPp7q+TLd0YzXYHGoHPkOX7rQGt/0tFfPU+6ipOFvKuX+FO/iBXsnCyOYWds6UVnC3g6o/2Jyt8nCDV5gtYuCDm8K7OKlTYJ6j38KkXRjwdgOr1pJwqMbOKbOLmz+Gv6JV/DXrpE/D4x1S8nDoepTknFzHE8Nf0UZJw+QHZdbfwyHzWp4RAeqlsWbjkL8K/ogljhyXXn8Ew/8ACl5OB4fkwJ03LTEWEj2pHbho9qUc3Gm7CKzGO3A+SiJKPAxnYkLaTChvmFHx4l3Q/BMHGHY2PZA+3JWiKwjr8UiyYVoE1ED7oH43Uvc/mhssir9ljHtBpw99fqglcDjCDopPEh0kZA0doWOq8sjSHMdXk4AqtjiGHadZGjytSuF43hwP84f1BQU2SUFssby5uuUG/HDkk72I3sXQS229slclNYPHsMjTM0DMHsc0E0BJTpo2kbjM0Ss91G9vMVhg12IhxEPeVckZe0GUAZczL3kDdMv7wHUAHm8Paz9mYX6sNZHfvNo23XcVyPJXpO3bmz58+GDw2dh72GTQB2eznFbtkt2YcnF3kueccxeWWUzMLu8GTFQGmkkUA/8A1eFlP5OYw7FyreE7cnu8kl97G4uhmboWkjUOA3a7mNjute0HbFmOY0ys7vEMoCVmzh0Pl6/FTcXVQnEcM7DfdySQSg93KY2nOzS224ExyN0DmiiD1BBM/BhDhnuhkPdBzmSQyE//AB5nMuNs4qw1zXZXgjY3WgCgeEdoHwEgtEkbnBz2WW25ptsjHDWOVvJ7deoIsFw4bvXPfhp++bKTnimIE9k2S+9JOudp8yG7LGLViU7S8HM0QxcbaIPdzM5xSt+801yO4PMH1VNc08t10Hsz9ogk1jMrS0MeB4g+MbMeW2Dl/dfu3npt72k7MscDLhfE061o17erSOZC3olc/in6opxJGxpZicKQdQQfRLWRuFqX6W9vDIi4efXVAdqVjQs45XC7i3udvTd6rzMV7JaGGlYyx76TQ+ZHjdp1tKxhbMu6CuOHfaWGJBmdmOm2g6jn8UaGIuNraHBnS/h+auXZjs+ZHCxoNyRoB+fkvfLP9M6M9jOzzpHDT3XS5uHOADWkNaBQHol8C1sLcrG0tzjHHkvJWM4fKP3xSJLhZObwhGd5GxWrpXVsqjSfDaf5ij5nlp0cjyyklJzwm9wUDXdvIsEEeq1dDJ5fFJNw8gugfZajvehrl/wiDzxv5paSF52/BePc+kk6Z239lQaTDv6j4pSZrhz+eq8fO4b39UpNMd9UGzpHjmUMvk/m+CVmc/1WMxrgOaCZjiI5BOMFclBgPG4dfqSm4nuPJx9na/q1FSgkaDqtmRlwsN06/wBklhWOP3YnX/NoPmmzFNsQB01+CD3u8p6/JNx4lgoFtfNIlkgFEj+rr7eS2s6Cx/V5/r4oJjD4qPqE/DjW9AQegCrjGuPPfazy8tE5HA/oPn+Cga4nw6CYagNd1pV7FcFfH9whw8lYTA48m+2b81qQRuB8/ZWUscx7R9m5pnZmNo+YKrjuyeM5QuPpX4rvDIA7c/AAfmif4I062eWln32UslWWxwYdjMedsJKb/lS83ZvGM1dhZx/9b/XovomDhUFkFvLfxa+lojuAQu2056brPGNcq+bRgJgdYHnXYsfR8jsrZw3j/EGMMbMJGGOoFogYwH/UKF+67BL2ar7huuRF8/VR8vDnNNGOxzIB8+SYzTNrncWM4kTbMMAf5QAfbXRMxycQDi6WO7+9et+45+au7MKw6F7mn0q72oH9H5J08FnYLa+N/kQQ76rW2dOe4jhMeJ1LS1/Q38jsR81V+I9nJIydCR8QQuwumdtJh2munp5hDdiMORT4izrVV52NrRduFyYEjdpCGMN5/Jdlx/AMM/Vj8vkRp9SQoHE9kjVgNd6OG3vSzprk5mcOeo+KwYf+YK+Hsm7/AMTv6o6/9k7gOx8bj+0cGD+s/Bp/Fa1Tk57BhRfMqWwHB5HuAa35LoGE7PYVv/c//Iv6qXhbhox4QT5kg/Sgmk5Knwzs41hBlcL/AFurVgsQ2MZY3NAP61Q8XiYuQF+n91GSOva/WtFqRm1YZMRNyLT89PZad/MNg32KicK2QfvkD0pScMxbed3ub1+CAwmlI1Hwv8UN083WvmhyYxn8R+BSU3EW8rUBJmyHUub7CkjNK8efrp+KI+Z7tGtcfYhMQcKe7V5DR05/r8lRGDi0g3JHuSmG8TediP16qYdw2MCqs/NQ2NwYaSKFeVA/VDTabFvO7fhsl5Jid2nTkNytonltAWPmt5MdfQ+zb+iBdzL1GYAIEkbj+675phr7/wCDqvO8I/5P5oFPsrqrK8890FsVbsd8k+4XpvfL7x+Vrym9PmL+HsgejBFaAD28imBI7+LcdSsWLKsHmfYD9dEUUsWIC9wOQ80WPCitW0fUaLFiKHJga6Besje077ea8WICte4H0TDsZXLyWLER43EC+hux6pmLHFpq7HMa/JYsQO/bwaOv/N7LZmPqqCxYmlHZxc2DQqj/AGrpz5Lf/FQTqF6sU0BmRrxZFUeg/RUlM+N7AGs8QG+3zu6WLFLFiGPDSNN/K/T8wgT8OYfvg/Ect1ixWI0i4JDQ0c4VuXEGx5DRDdwbDjTI7+t34LFisNNY+GQD9w/1OPPnbkUYDD8om+4v6rFiDaXCRGqhYf8AaBsNdClZsPCD4oW3ryHypYsRGv2OA1+yHtp+K9+yQ9HD3WLFRjsDDy19b/QXhwUXJuldXemyxYg0+zsA0a31of3XrXA8hW9VoK6A+ixYoPMQ4t3+FD8/JBbKD10J6f8APNYsQbGQdb9r190tiGB3L6D8FixBFYrC0TsPTRJvY4b/AJ7+qxYqgIkF0L1P6/BFbJrR8uX4r1YqPJXMI5/r6rQOBvQ/ILxYg//Z');">
+    <div class="min-h-screen flex flex-col items-center justify-start py-10">
+        <h1 class="text-4xl font-semibold text-white mb-8 text-center bg-gradient-to-r from-green-400 to-blue-500 text-transparent bg-clip-text">
+            Energy Prediction Platform
+        </h1>
 
-    <h2>{{ prediction_text }}</h2>
+        <div class="w-full max-w-md bg-white/30 backdrop-blur-md rounded-xl shadow-lg p-8 space-y-6 border border-white/10">
+            <div>
+                <label for="file-upload" class="block text-lg font-medium text-gray-200 mb-4">
+                    Upload Data File
+                </label>
+                <input type="file" id="file-upload" accept=".csv, .xlsx" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4" />
+                <p id="file-upload-help" class="mt-2 text-xs text-gray-400">Supported formats: .csv, .xlsx</p>
+            </div>
+
+            <div>
+                <label for="model-type" class="block text-lg font-medium text-gray-200 mb-4">
+                    Choose Model Type
+                </label>
+                <select id="model-type" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4">
+                    <option value="cnn">CNN</option>
+                    <option value="rnn">RNN</option>
+                    <option value="lstm">LSTM</option>
+                    <option value="mlp">MLP</option>
+                </select>
+                <button id="train-model" class="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold rounded-md py-3 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 mt-4">
+                    Train Model
+                </button>
+                 <div id="training-status" class="mt-4 text-center text-gray-300 font-medium"></div>
+            </div>
+
+            <div>
+                <label class="block text-lg font-medium text-gray-200 mb-4">
+                    Make Predictions
+                </label>
+                <div id="input-fields" class="space-y-4">
+                    </div>
+                <button id="predict" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-md py-3 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 mt-4">
+                    Predict Energy Consumption
+                </button>
+                <div id="prediction-output" class="mt-4 text-center text-gray-300 text-lg font-semibold"></div>
+            </div>
+             <div>
+                <label class="block text-lg font-medium text-gray-200 mb-4">
+                    Manual Data Entry
+                </label>
+                 <div id="manual-input-fields" class="space-y-4">
+                    <input type="number" placeholder="Enter appliance 1 energy consumption" id="manual-appliance1" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4"/>
+                     <input type="number" placeholder="Enter appliance 2 energy consumption" id="manual-appliance2" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4"/>
+                      <input type="number" placeholder="Enter appliance 3 energy consumption" id="manual-appliance3" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4"/>
+                      <input type="number" placeholder="Enter appliance 4 energy consumption" id="manual-appliance4" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4"/>
+                      <input type="number" placeholder="Enter appliance 5 energy consumption" id="manual-appliance5" class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4"/>
+               </div>
+                <button id="manual-predict" class="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-semibold rounded-md py-3 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 mt-4">
+                    Predict With Manual Data
+                </button>
+                <div id="manual-prediction-output" class="mt-4 text-center text-gray-300 text-lg font-semibold"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const fileUpload = document.getElementById('file-upload');
+        const modelTypeSelect = document.getElementById('model-type');
+        const trainModelButton = document.getElementById('train-model');
+        const predictButton = document.getElementById('predict');
+        const inputFieldsContainer = document.getElementById('input-fields');
+        const predictionOutput = document.getElementById('prediction-output');
+        const trainingStatus = document.getElementById('training-status');
+
+        const manualPredictButton = document.getElementById('manual-predict');
+        const manualAppliance1Input = document.getElementById('manual-appliance1');
+        const manualAppliance2Input = document.getElementById('manual-appliance2');
+        const manualAppliance3Input = document.getElementById('manual-appliance3');
+        const manualAppliance4Input = document.getElementById('manual-appliance4');
+        const manualAppliance5Input = document.getElementById('manual-appliance5');
+        const manualPredictionOutput = document.getElementById('manual-prediction-output');
+
+
+        let model = null;
+        let fileData = null;
+        let independentVariables = [];
+
+        fileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                fileData = e.target.result;
+                //console.log('File data loaded:', fileData); // Debugging
+                trainingStatus.textContent = 'File uploaded successfully. Ready to train model.';
+                trainingStatus.classList.remove('text-gray-300');
+                trainingStatus.classList.add('text-green-400');
+            };
+
+            reader.onerror = () => {
+                trainingStatus.textContent = 'Error reading file.';
+                trainingStatus.classList.remove('text-gray-300');
+                trainingStatus.classList.add('text-red-400');
+                fileData = null;
+            };
+
+            if (file) {
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else if (file.name.endsWith('.xlsx')) {
+                   const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        fileData = XLSX.utils.sheet_to_csv(worksheet);
+                       // console.log('File data loaded:', fileData); // Debugging
+                        trainingStatus.textContent = 'File uploaded successfully. Ready to train model.';
+                        trainingStatus.classList.remove('text-gray-300');
+                        trainingStatus.classList.add('text-green-400');
+                    };
+                    reader.readAsArrayBuffer(file);
+
+                }else {
+                    trainingStatus.textContent = 'Unsupported file format. Please upload .csv or .xlsx.';
+                    trainingStatus.classList.remove('text-gray-300');
+                    trainingStatus.classList.add('text-red-400');
+                    fileData = null;
+                }
+            }
+        });
+
+        trainModelButton.addEventListener('click', () => {
+            if (!fileData) {
+                trainingStatus.textContent = 'Please upload a data file first.';
+                trainingStatus.classList.remove('text-gray-300');
+                trainingStatus.classList.add('text-red-400');
+                return;
+            }
+
+            const modelType = modelTypeSelect.value;
+            trainingStatus.textContent = `Training ${modelType} model...`;
+            trainingStatus.classList.remove('text-gray-300');
+            trainingStatus.classList.add('text-yellow-400');
+
+
+            // Simulate backend model training (replace with actual backend call)
+            setTimeout(() => {
+                try {
+                // Parse the file data (assuming CSV for simplicity)
+                    const lines = fileData.trim().split('\n');
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const data = lines.slice(1).map(line => {
+                        const values = line.split(',').map(v => parseFloat(v.trim()));
+                        return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
+                    });
+
+                if (data.length === 0) {
+                      trainingStatus.textContent = 'No data found in the uploaded file.';
+                      trainingStatus.classList.remove('text-yellow-400');
+                      trainingStatus.classList.add('text-red-400');
+                      return;
+                    }
+                 independentVariables = headers.filter(h => h !== 'energy_consumption');
+                  if (independentVariables.length === 0) {
+                        trainingStatus.textContent = 'No independent variables found.  Ensure your file has columns other than "energy_consumption".';
+                        trainingStatus.classList.remove('text-yellow-400');
+                        trainingStatus.classList.add('text-red-400');
+                        return;
+                    }
+
+                // Create input fields for prediction
+                inputFieldsContainer.innerHTML = ''; // Clear previous inputs
+                independentVariables.forEach(variableName => {
+                    const inputDiv = document.createElement('div');
+                    inputDiv.classList.add('mb-4');
+                    inputDiv.innerHTML = `
+                        <label for="${variableName}" class="block text-sm font-medium text-gray-200">${variableName}</label>
+                        <input type="number" id="${variableName}" placeholder="Enter ${variableName}" required class="w-full text-sm text-gray-300 bg-gray-800/50 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent py-2.5 px-4" />
+                    `;
+                    inputFieldsContainer.appendChild(inputDiv);
+                });
+                    // In a real application, you would send this data to your backend
+                    // to train the model.  This is a simplified example.
+                    model = {
+                        type: modelType,
+                        data: data, //  Store the data.
+                        independentVariables: independentVariables,
+                        //  coefficients: [1.2, 0.5, 0.8]  // Store model parameters (from backend)
+                    };
+
+                    //Simulate a trained model
+                    if (modelType === 'cnn'){
+                         model.cnnParams = {
+                            inputShape: [1, 28, 28],
+                            numFilters: 32,
+                            kernelSize: [3, 3],
+                            outputSize: 1,
+                            weights: [ /* CNN weights here */ 0.1, 0.2, 0.3]
+                         }
+                    }
+                    else if (modelType === 'rnn'){
+                         model.rnnParams = {
+                            inputSize: 10,
+                            hiddenSize: 20,
+                            outputSize: 1,
+                            weights: [/* RNN weights */ 0.4, 0.5, 0.6]
+                         }
+                    }
+                    else if (modelType === 'lstm'){
+                         model.lstmParams = {
+                            inputSize: 3,
+                            hiddenSize: 64,
+                            outputSize: 1,
+                            weights: [0.1, 0.2, 0.3, /*...*/ 0.9]
+                         }
+                    }
+                    else if (modelType === 'mlp'){
+                        model.mlpParams = {
+                            inputSize: 5,
+                            hiddenLayers: [128, 64],
+                            outputSize: 1,
+                            weights: [ /* MLP weights */ 0.7, 0.8, 0.9]
+                        }
+                    }
+
+
+
+                    trainingStatus.textContent = `Model trained successfully (${modelType}).`;
+                    trainingStatus.classList.remove('text-yellow-400');
+                    trainingStatus.classList.add('text-green-400');
+                    predictButton.disabled = false;
+                } catch (error) {
+                    console.error('Error during training:', error);
+                    trainingStatus.textContent = `Error training model: ${error.message}`;
+                    trainingStatus.classList.remove('text-yellow-400');
+                    trainingStatus.classList.add('text-red-400');
+                }
+            }, 2000); // Simulate 2 seconds of training time
+        });
+
+        predictButton.addEventListener('click', () => {
+            if (!model) {
+                predictionOutput.textContent = 'Please train a model first.';
+                predictionOutput.classList.remove('text-gray-300');
+                predictionOutput.classList.add('text-red-400');
+                return;
+            }
+
+            const inputData = {};
+            let hasEmptyInput = false;
+            independentVariables.forEach(variableName => {
+                const inputElement = document.getElementById(variableName);
+                const value = parseFloat(inputElement.value);
+                if (isNaN(value)) {
+                    predictionOutput.textContent = `Please enter a valid value for ${variableName}.`;
+                    predictionOutput.classList.remove('text-gray-300');
+                    predictionOutput.classList.add('text-red-400');
+                    hasEmptyInput = true;
+                    return; // Stop processing if any input is invalid
+                }
+                inputData[variableName] = value;
+            });
+
+             if (hasEmptyInput) {
+                return; // Stop prediction if any input is invalid
+             }
+
+            let prediction;
+            try{
+                 if (model.type === 'cnn') {
+                    //  Replace with actual CNN prediction logic
+                    const inputVector = Object.values(inputData);
+                    prediction = 0;
+                    for (let i = 0; i < model.cnnParams.inputShape[0] * model.cnnParams.inputShape[1] * model.cnnParams.inputShape[2]; i++){
+                         prediction += inputVector[i] * model.cnnParams.weights[i];
+                    }
+
+                    prediction += model.cnnParams.weights[model.cnnParams.weights.length-1];
+                } else if (model.type === 'rnn') {
+                    // Replace with actual RNN prediction logic
+                      const inputVector = Object.values(inputData);
+                      prediction = 0;
+                      for (let i = 0; i< model.rnnParams.inputSize; i++){
+                        prediction += inputVector[i] * model.rnnParams.weights[i];
+                      }
+                      prediction +=  model.rnnParams.weights[model.rnnParams.weights.length -1];
+                }
+                else if (model.type === 'lstm'){
+                    const inputVector = Object.values(inputData);
+                    prediction = 0;
+                    for (let i = 0; i < model.lstmParams.inputSize; i++){
+                        prediction += inputVector[i] * model.lstmParams.weights[i];
+                    }
+                    // Add a bias term (the last weight in the array)
+                    prediction += model.lstmParams.weights[model.lstmParams.weights.length -1];
+                }
+                else if (model.type === 'mlp'){
+                      const inputVector = Object.values(inputData);
+                      prediction = 0;
+                      for (let i = 0; i < model.mlpParams.inputSize; i++){
+                        prediction += inputVector[i] * model.mlpParams.weights[i];
+                      }
+                      prediction += model.mlpParams.weights[model.mlpParams.weights.length -1];
+                }
+                else {
+                    prediction = 'Prediction not available for this model type.';
+                }
+                predictionOutput.textContent = `Predicted Energy Consumption: ${prediction.toFixed(2)} kWh`;  // Adjust decimal places
+                predictionOutput.classList.remove('text-gray-300');
+                predictionOutput.classList.add('text-blue-400');
+            }
+            catch(error){
+                 predictionOutput.textContent = `Error during prediction: ${error.message}`;
+                 predictionOutput.classList.remove('text-gray-300');
+                 predictionOutput.classList.add('text-red-400');
+            }
+
+        });
+
+
+
+        manualPredictButton.addEventListener('click', () => {
+             if (!model) {
+                manualPredictionOutput.textContent = 'Please train a model first.';
+                manualPredictionOutput.classList.remove('text-gray-300');
+                manualPredictionOutput.classList.add('text-red-400');
+                return;
+            }
+            const manualAppliance1Data = parseFloat(manualAppliance1Input.value);
+            const manualAppliance2Data = parseFloat(manualAppliance2Input.value);
+            const manualAppliance3Data = parseFloat(manualAppliance3Input.value);
+            const manualAppliance4Data = parseFloat(manualAppliance4Input.value);
+            const manualAppliance5Data = parseFloat(manualAppliance5Input.value);
+
+
+             if (isNaN(manualAppliance1Data) || isNaN(manualAppliance2Data) || isNaN(manualAppliance3Data) || isNaN(manualAppliance4Data) || isNaN(manualAppliance5Data)) {
+                manualPredictionOutput.textContent = 'Please enter valid numeric values for all appliance inputs.';
+                manualPredictionOutput.classList.remove('text-gray-300');
+                manualPredictionOutput.classList.add('text-red-400');
+                return;
+            }
+            const manualInputData = {
+                'appliance1': manualAppliance1Data,
+                'appliance2': manualAppliance2Data,
+                'appliance3': manualAppliance3Data,
+                'appliance4': manualAppliance4Data,
+                'appliance5': manualAppliance5Data,
+            };
+             let manualPrediction;
+             try{
+                  if (model.type === 'cnn') {
+                    //  Replace with actual CNN prediction logic
+                      const inputVector = Object.values(manualInputData);
+                      manualPrediction = 0;
+                      for (let i = 0; i < model.cnnParams.inputShape[0] * model.cnnParams.inputShape[1] * model.cnnParams.inputShape[2]; i++){
+                         manualPrediction += inputVector[i] * model.cnnParams.weights[i];
+                      }
+                      manualPrediction += model.cnnParams.weights[model.cnnParams.weights.length - 1];
+                } else if (model.type === 'rnn') {
+                    // Replace with actual RNN prediction logic
+                    const inputVector = Object.values(manualInputData);
+                      manualPrediction = 0;
+                      for (let i = 0; i< model.rnnParams.inputSize; i++){
+                         manualPrediction += inputVector[i] * model.rnnParams.weights[i];
+                      }
+                      manualPrediction +=  model.rnnParams.weights[model.rnnParams.weights.length -1];
+                }
+                else if (model.type === 'lstm'){
+                      const inputVector = Object.values(manualInputData);
+                      manualPrediction = 0;
+                      for (let i = 0; i < model.lstmParams.inputSize; i++){
+                        manualPrediction += inputVector[i] * model.lstmParams.weights[i];
+                      }
+                      // Add a bias term (the last weight in the array)
+                      manualPrediction += model.lstmParams.weights[model.lstmParams.weights.length -1];
+                }
+                else if (model.type === 'mlp'){
+                      const inputVector = Object.values(manualInputData);
+                      manualPrediction = 0;
+                      for (let i = 0; i < model.mlpParams.inputSize; i++){
+                        manualPrediction += inputVector[i] * model.mlpParams.weights[i];
+                      }
+                      manualPrediction += model.mlpParams.weights[model.mlpParams.weights.length -1];
+                }
+                else {
+                    manualPrediction = 'Prediction not available for this model type.';
+                }
+                manualPredictionOutput.textContent = `Predicted Energy Consumption: ${manualPrediction.toFixed(2)} kWh`;
+                manualPredictionOutput.classList.remove('text-gray-300');
+                manualPredictionOutput.classList.add('text-blue-400');
+             }
+             catch(error){
+                  manualPredictionOutput.textContent = `Error during prediction: ${error.message}`;
+                  manualPredictionOutput.classList.remove('text-gray-300');
+                  manualPredictionOutput.classList.add('text-red-400');
+             }
+        });
+    </script>
 </body>
 </html>
-
