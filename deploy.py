@@ -1,358 +1,151 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, request, jsonify
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, SGDRegressor, Ridge
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.preprocessing import StandardScaler, PolynomialFeatures
-from sklearn.pipeline import Pipeline
-import pickle
+import numpy as np
 import os
-from io import StringIO
-import openpyxl
+import tensorflow as tf
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Dense, Conv1D, MaxPooling1D, Flatten, LSTM, SimpleRNN
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
 
 app = Flask(__name__)
-app.secret_key = "energy_prediction_secret"  # Required for session
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MODEL_FOLDER'] = 'models'
 
-# Directory to save uploaded files and the trained model
-UPLOAD_FOLDER = 'uploads'
-MODEL_FOLDER = 'models'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(MODEL_FOLDER, exist_ok=True)
-MODEL_PATH = os.path.join(MODEL_FOLDER, 'trained_model.pkl')
-FEATURE_NAMES_PATH = os.path.join(MODEL_FOLDER, 'feature_names.pkl')
-PREPROCESSOR_PATH = os.path.join(MODEL_FOLDER, 'preprocessor.pkl')
+# Ensure folders exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['MODEL_FOLDER'], exist_ok=True)
 
-# Global variable to store the trained model and feature names
-trained_model = None
-feature_names = None
-preprocessor = None
-training_data = None  # To store the training data
-target_column_name = None
-
-# Mapping of model types to their classes
-MODEL_TYPES = {
-    'linear': LinearRegression,
-    'sgd': SGDRegressor,
-    'ridge': Ridge,
-    'decision_tree': DecisionTreeRegressor,
-    'random_forest': RandomForestRegressor,
-    'gradient_boosting': GradientBoostingRegressor,
-    'mlp': MLPRegressor,
-}
-
-def save_model_artifacts(model, feature_names, preprocessor=None):
-    """
-    Saves the trained model, feature names, and preprocessor (if applicable) to files.
-    """
-    with open(MODEL_PATH, 'wb') as f:
-        pickle.dump(model, f)
-    with open(FEATURE_NAMES_PATH, 'wb') as f:
-        pickle.dump(feature_names, f)
-    if preprocessor:
-        with open(PREPROCESSOR_PATH, 'wb') as f:
-            pickle.dump(preprocessor, f)
-
-def load_model_artifacts():
-    """
-    Loads the trained model, feature names, and preprocessor from files.
-    Sets the global variables.
-    """
-    global trained_model
-    global feature_names
-    global preprocessor
-    try:
-        with open(MODEL_PATH, 'rb') as f:
-            trained_model = pickle.load(f)
-        with open(FEATURE_NAMES_PATH, 'rb') as f:
-            feature_names = pickle.load(f)
-        with open(PREPROCESSOR_PATH, 'rb') as f:
-            preprocessor = pickle.load(f)
-        return True
-    except FileNotFoundError:
-        return False
-
-# Attempt to load model artifacts on startup
-load_model_artifacts()
-
-def preprocess_data(df, for_training=True):
-    """
-    Preprocesses the input dataframe.
-    Handles potential missing 'TimeStamp' column and various data formats.
-
-    Args:
-        df (pd.DataFrame): The input dataframe.
-        for_training (bool, optional):  If True, the function is being used for training.
-            This affects how missing values in 'TimeStamp' are handled. Defaults to True.
-    Returns:
-        pd.DataFrame: The preprocessed dataframe.
-    """
-    if 'TimeStamp' not in df.columns:
-        if for_training:
-            raise ValueError("The training data does not contain a 'TimeStamp' column for the required preprocessing.")
-        else:
-            df['TimeStamp'] = pd.to_datetime('now')  # Create a dummy TimeStamp for prediction
-    try:
-        df['TimeStamp'] = pd.to_datetime(df['TimeStamp'], format='%m/%d/%Y %H:%M:%S', errors='coerce')
-    except ValueError:
-        try:
-            df['TimeStamp'] = pd.to_datetime(df['TimeStamp'], errors='coerce')
-        except ValueError:
-            raise ValueError("Invalid TimeStamp format.  Please use '%m/%d/%Y %H:%M:%S' or a standard datetime format.")
-
-    df = df.dropna(subset=['TimeStamp'])
-    df['Hour'] = df['TimeStamp'].dt.hour
-    df['Minute'] = df['TimeStamp'].dt.minute
-    df['DayOfWeek'] = df['TimeStamp'].dt.dayofweek
-    df = df.drop(columns=['TimeStamp'])
-    df = pd.get_dummies(df, columns=['DayOfWeek'], prefix='DayOfWeek')
+def preprocess_data(df):
+    # If TimeStamp exists, process it
+    if 'TimeStamp' in df.columns:
+        df['TimeStamp'] = pd.to_datetime(df['TimeStamp'])
+        df = df.sort_values('TimeStamp')
+        
+        df['Hour'] = df['TimeStamp'].dt.hour
+        df['Minute'] = df['TimeStamp'].dt.minute
+        df['DayOfWeek'] = df['TimeStamp'].dt.dayofweek
+        
+        # One-hot encode DayOfWeek
+        encoder = OneHotEncoder(sparse_output=False)
+        dayofweek_encoded = encoder.fit_transform(df[['DayOfWeek']])
+        dayofweek_df = pd.DataFrame(dayofweek_encoded, columns=[f'DayOfWeek_{int(i)}' for i in range(dayofweek_encoded.shape[1])])
+        
+        df = pd.concat([df.reset_index(drop=True), dayofweek_df], axis=1)
+        
+        # Drop original TimeStamp and DayOfWeek columns
+        df = df.drop(['TimeStamp', 'DayOfWeek'], axis=1)
+    
     return df
 
-def train_model_function(data, target_column, model_type='linear', polynomial_degree=1):
-    """
-    Trains a regression model on the given data.
+def build_mlp(input_shape):
+    model = Sequential([
+        Dense(128, activation='relu', input_shape=(input_shape,)),
+        Dense(64, activation='relu'),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    return model
 
-    Args:
-        data (pd.DataFrame): The training data.
-        target_column (str): The name of the target column.
-        model_type (str, optional): The type of model to train.
-            Defaults to 'linear'.  Options are defined in MODEL_TYPES.
-        polynomial_degree (int, optional): The degree of the polynomial features. Defaults to 1.
+def build_cnn(input_shape):
+    model = Sequential([
+        Conv1D(64, kernel_size=3, activation='relu', input_shape=(input_shape, 1)),
+        MaxPooling1D(pool_size=2),
+        Flatten(),
+        Dense(64, activation='relu'),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    return model
 
-    Returns:
-        tuple: (trained model, feature names, preprocessor, MSE, R^2, training data)
-            Returns None if the model type is invalid.
-    """
-    if target_column not in data.columns:
-        raise ValueError(f"Target column '{target_column}' not found in the data.")
+def build_rnn(input_shape):
+    model = Sequential([
+        SimpleRNN(64, activation='relu', input_shape=(input_shape, 1)),
+        Dense(32, activation='relu'),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    return model
 
-    y = data[target_column]
-    X = data.drop(columns=[target_column])
-
-    numerical_features = ['Hour', 'Minute']
-    numerical_cols_present = [col for col in numerical_features if col in X.columns]
-
-    # Create a pipeline for preprocessing and model training
-    pipeline_steps = []
-
-    if numerical_cols_present:
-        preprocessor = StandardScaler()
-        pipeline_steps.append(('scaler', preprocessor))
-
-    if polynomial_degree > 1:
-        poly = PolynomialFeatures(degree=polynomial_degree)
-        pipeline_steps.append(('poly', poly))
-
-    model_class = MODEL_TYPES.get(model_type)
-    if model_class:
-        model = model_class()
-        pipeline_steps.append(('model', model))
-        pipeline = Pipeline(pipeline_steps)
-    else:
-        raise ValueError(f"Invalid model type: {model_type}.  Choose from {', '.join(MODEL_TYPES.keys())}")
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    pipeline.fit(X_train, y_train)
-    y_pred = pipeline.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    return pipeline, X.columns.tolist(), preprocessor, mse, r2, data
-
-def distill_knowledge(teacher_model, X_train, y_train, student_model_type='linear', alpha=0.5, temperature=2.0):
-    """
-    Distills knowledge from a teacher model to a student model.
-
-    Args:
-        teacher_model: The trained teacher model.
-        X_train (pd.DataFrame): The training data.
-        y_train (pd.Series): The target values for the training data.
-        student_model_type (str, optional): The type of student model to use. Defaults to 'linear'.
-        alpha (float, optional): Weighting between ground truth and soft targets. Defaults to 0.5.
-        temperature (float, optional): Temperature for softening the teacher's predictions. Defaults to 2.0.
-
-    Returns:
-        The trained student model, or None on error
-    """
-    student_model_class = MODEL_TYPES.get(student_model_type)
-    if not student_model_class:
-        raise ValueError(f"Invalid student model type: {student_model_type}.  Choose from {', '.join(MODEL_TYPES.keys())}")
-    student_model = student_model_class()
-
-    teacher_predictions = teacher_model.predict(X_train)
-    soft_targets = (1 - alpha) * y_train + alpha * teacher_predictions
-    student_model.fit(X_train, soft_targets)
-    return student_model
-
-@app.route('/', methods=['GET'])
-def index():
-    """
-    Renders the main page.
-    Passes feature names to the template if available.
-    """
-    return render_template('index.html', feature_names=feature_names)
+def build_lstm(input_shape):
+    model = Sequential([
+        LSTM(64, activation='tanh', input_shape=(input_shape, 1)),
+        Dense(32, activation='relu'),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    return model
 
 @app.route('/train', methods=['POST'])
 def train():
-    """
-    Handles the model training process.
-    -   Validates file upload and format (CSV, XLSX).
-    -   Preprocesses the data.
-    -   Trains the specified model.
-    -   Distills knowledge into a student model.
-    -   Saves the trained model and feature names.
-    -   Returns the training results (MSE) or an error message.
-    """
-    global trained_model
-    global feature_names
-    global preprocessor
-    global training_data
-    global target_column_name
+    file = request.files['file']
+    model_type = request.form['model_type']  # 'mlp', 'cnn', 'rnn', 'lstm'
+    target_column = request.form['target_column']
+    
+    filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(filename)
 
-    if 'training_file' not in request.files:
-        return render_template('index.html', error="No training file uploaded.", feature_names=feature_names)
+    df = pd.read_csv(filename)
+    df = preprocess_data(df)
+    
+    if target_column not in df.columns:
+        return jsonify({'error': 'Target column not found'}), 400
+    
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    file = request.files['training_file']
-    if file.filename == '':
-        return render_template('index.html', error="No training file selected.", feature_names=feature_names)
-
-    target_column = request.form.get('target_column')
-    model_type = request.form.get('model_type', 'linear')  # Default to linear if not provided
-    polynomial_degree = int(request.form.get('polynomial_degree', 1))  # default to 1
-
-    if not target_column:
-        return render_template('index.html', error="Please specify the target column.", feature_names=feature_names)
-
-    try:
-        filename = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(filename)
-        if filename.endswith('.csv'):
-            data = pd.read_csv(filename)
-        elif filename.endswith('.xlsx'):
-            data = pd.read_excel(filename)
+    if model_type == 'mlp':
+        model = build_mlp(X_train.shape[1])
+        model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=1)
+    else:
+        # Reshape for sequence models
+        X_train_seq = np.expand_dims(X_train, axis=2)
+        X_test_seq = np.expand_dims(X_test, axis=2)
+        
+        if model_type == 'cnn':
+            model = build_cnn(X_train_seq.shape[1])
+            model.fit(X_train_seq, y_train, epochs=20, batch_size=32, verbose=1)
+        elif model_type == 'rnn':
+            model = build_rnn(X_train_seq.shape[1])
+            model.fit(X_train_seq, y_train, epochs=20, batch_size=32, verbose=1)
+        elif model_type == 'lstm':
+            model = build_lstm(X_train_seq.shape[1])
+            model.fit(X_train_seq, y_train, epochs=20, batch_size=32, verbose=1)
         else:
-            return render_template('index.html', error="Unsupported file format. Please upload CSV or XLSX.", feature_names=feature_names)
+            return jsonify({'error': 'Invalid model type'}), 400
 
-        data = preprocess_data(data.copy(), for_training=True)
+    model_save_path = os.path.join(app.config['MODEL_FOLDER'], f"{model_type}_model.h5")
+    model.save(model_save_path)
 
-        if target_column not in data.columns:
-            return render_template('index.html', error=f"Target column '{target_column}' not found after preprocessing.", feature_names=feature_names)
+    return jsonify({'message': f'Model trained and saved as {model_type}_model.h5'})
 
-        target_column_name = target_column
-        y = data[target_column]
-        X = data.drop(columns=[target_column])
+@app.route('/predict', methods=['POST'])
+def predict():
+    file = request.files['file']
+    model_name = request.form['model_name']  # e.g., 'mlp_model.h5'
+    
+    filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(filename)
 
-        teacher_model, trained_features, trained_preprocessor, mse, r2, training_data = train_model_function(data.copy(), target_column, model_type, polynomial_degree)
+    df = pd.read_csv(filename)
+    df = preprocess_data(df)
 
-        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
-        distilled_model = distill_knowledge(teacher_model, X_train, y_train, student_model_type=model_type, alpha=0.3, temperature=1.5)
+    model_path = os.path.join(app.config['MODEL_FOLDER'], model_name)
+    model = load_model(model_path)
 
-        trained_model = distilled_model  # Use the distilled model
-        feature_names = trained_features
-        preprocessor = trained_preprocessor
-        save_model_artifacts(trained_model, feature_names, preprocessor)
-        session['trained_model_type'] = model_type  # save model type
+    if len(model.input_shape) == 2:
+        X = df
+    else:
+        X = np.expand_dims(df, axis=2)
 
-        # Make predictions on the training data
-        predictions = trained_model.predict(training_data[feature_names])
+    predictions = model.predict(X).flatten()
 
-        return render_template('index.html',
-                                     training_message=f"Model ({model_type}) trained successfully with MSE: {mse:.2f}, R^2: {r2:.2f}. Predictions on training data:",
-                                     training_success=True,
-                                     feature_names=feature_names,
-                                     predictions=predictions.tolist(),
-                                     target_column_name=target_column)
-
-    except ValueError as e:
-        return render_template('index.html', error=str(e), feature_names=feature_names)
-    except Exception as e:
-        return render_template('index.html', error=f"An error occurred during training: {str(e)}", feature_names=feature_names)
-
-@app.route('/predict_file', methods=['POST'])
-def predict_file():
-    """
-    Handles predictions from a file upload.
-    -   Validates that a model has been trained.
-    -   Reads the uploaded file (CSV, XLSX).
-    -   Preprocesses the data.
-    -   Makes predictions using the trained model based on the loaded features.
-    -   Returns the predictions or an error message.
-    """
-    if trained_model is None or feature_names is None or preprocessor is None:
-        return render_template('index.html', error="Model not trained yet or artifacts not loaded.", feature_names=feature_names)
-
-    if 'prediction_file' not in request.files:
-        return render_template('index.html', error="No prediction file uploaded.", feature_names=feature_names)
-
-    file = request.files['prediction_file']
-    if file.filename == '':
-        return render_template('index.html', error="No prediction file selected.", feature_names=feature_names)
-
-    try:
-        filename = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(filename)
-        if filename.endswith('.csv'):
-            data = pd.read_csv(filename)
-        elif filename.endswith('.xlsx'):
-            data = pd.read_excel(filename)
-        else:
-            return render_template('index.html', error="Unsupported file format for prediction. Please upload CSV or XLSX.", feature_names=feature_names)
-
-        data = preprocess_data(data.copy(), for_training=False)
-
-        # Ensure the prediction data contains all the features the model was trained on
-        if not all(feature in data.columns for feature in feature_names):
-            missing_features = [f for f in feature_names if f not in data.columns]
-            return render_template('index.html', error=f"Prediction file missing required features after preprocessing: {', '.join(missing_features)}", feature_names=feature_names)
-
-        # Make predictions using only the loaded feature names
-        predictions = trained_model.predict(data[feature_names])
-        return render_template('index.html', prediction_file_message="Predictions generated successfully.", prediction_file_success=True, predictions=predictions.tolist(), feature_names=feature_names)
-
-    except Exception as e:
-        return render_template('index.html', error=f"An error occurred during prediction from file: {str(e)}", feature_names=feature_names)
-
-@app.route('/predict_manual', methods=['POST'])
-def predict_manual():
-    """
-    Handles manual predictions from user-entered data.
-    -   Validates that a model has been trained.
-    -   Extracts input data from the form based on the loaded feature names.
-    -   Creates a DataFrame with the expected features.
-    -   Preprocesses the input data.
-    -   Makes a prediction using the trained model.
-    -   Returns the prediction or an error message.
-    """
-    if trained_model is None or feature_names is None or preprocessor is None:
-        return render_template('index.html', error="Model not trained yet.", feature_names=feature_names)
-
-    try:
-        manual_data = {}
-        # Dynamically collect manual input based on the loaded feature names
-        for feature in feature_names:
-            value = request.form.get(f'manual-{feature.lower().replace(" ", "_")}')
-            if value is None:
-                return render_template('index.html', error=f"Please provide a value for feature: {feature}", feature_names=feature_names)
-            try:
-                manual_data[feature] = [float(value)]
-            except ValueError:
-                return render_template('index.html', error=f"Invalid value entered for feature: {feature}. Please enter a numeric value.", feature_names=feature_names)
-
-        input_df = pd.DataFrame(manual_data)
-
-        # Ensure all required columns from training are present, fill missing with 0 (for one-hot encoded)
-        input_df = input_df.reindex(columns=feature_names, fill_value=0)
-
-        # No need to preprocess again if the manual input directly matches the expected features
-
-        prediction = trained_model.predict(input_df[feature_names])[0]
-        return render_template('index.html', prediction_text=f"Predicted energy consumption: {prediction:.2f}", feature_names=feature_names)
-
-    except Exception as e:
-        return render_template('index.html', error=f"An error occurred during manual prediction: {str(e)}", feature_names=feature_names)
+    return jsonify({'predictions': predictions.tolist()})
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port
+
