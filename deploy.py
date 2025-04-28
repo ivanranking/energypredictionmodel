@@ -122,7 +122,7 @@ def train_model_function(data, target_column, model_type='linear', polynomial_de
         polynomial_degree (int, optional): The degree of the polynomial features. Defaults to 1.
 
     Returns:
-        tuple: (trained model, feature names, preprocessor, MSE, R^2)
+        tuple: (trained model, feature names, preprocessor, MSE, R^2, training data)
             Returns None if the model type is invalid.
     """
     if target_column not in data.columns:
@@ -258,11 +258,11 @@ def train():
         predictions = trained_model.predict(training_data[feature_names])
 
         return render_template('index.html',
-                               training_message=f"Model ({model_type}) trained successfully with MSE: {mse:.2f}, R^2: {r2:.2f}. Predictions on training data:",
-                               training_success=True,
-                               feature_names=feature_names,
-                               predictions=predictions.tolist(),
-                               target_column_name=target_column)
+                                     training_message=f"Model ({model_type}) trained successfully with MSE: {mse:.2f}, R^2: {r2:.2f}. Predictions on training data:",
+                                     training_success=True,
+                                     feature_names=feature_names,
+                                     predictions=predictions.tolist(),
+                                     target_column_name=target_column)
 
     except ValueError as e:
         return render_template('index.html', error=str(e), feature_names=feature_names)
@@ -276,7 +276,7 @@ def predict_file():
     -   Validates that a model has been trained.
     -   Reads the uploaded file (CSV, XLSX).
     -   Preprocesses the data.
-    -   Makes predictions using the trained model.
+    -   Makes predictions using the trained model based on the loaded features.
     -   Returns the predictions or an error message.
     """
     if trained_model is None or feature_names is None or preprocessor is None:
@@ -301,10 +301,12 @@ def predict_file():
 
         data = preprocess_data(data.copy(), for_training=False)
 
+        # Ensure the prediction data contains all the features the model was trained on
         if not all(feature in data.columns for feature in feature_names):
             missing_features = [f for f in feature_names if f not in data.columns]
             return render_template('index.html', error=f"Prediction file missing required features after preprocessing: {', '.join(missing_features)}", feature_names=feature_names)
 
+        # Make predictions using only the loaded feature names
         predictions = trained_model.predict(data[feature_names])
         return render_template('index.html', prediction_file_message="Predictions generated successfully.", prediction_file_success=True, predictions=predictions.tolist(), feature_names=feature_names)
 
@@ -316,7 +318,8 @@ def predict_manual():
     """
     Handles manual predictions from user-entered data.
     -   Validates that a model has been trained.
-    -   Extracts input data from the form.
+    -   Extracts input data from the form based on the loaded feature names.
+    -   Creates a DataFrame with the expected features.
     -   Preprocesses the input data.
     -   Makes a prediction using the trained model.
     -   Returns the prediction or an error message.
@@ -326,28 +329,30 @@ def predict_manual():
 
     try:
         manual_data = {}
-        manual_data['Hour'] = [int(request.form.get('manual-appliance1'))]
-        manual_data['Minute'] = [int(request.form.get('manual-appliance2'))]
-        day_of_week = int(request.form.get('manual-appliance3'))  # Get day of week
-        manual_data['DayOfWeek'] = [day_of_week]
+        # Dynamically collect manual input based on the loaded feature names
+        for feature in feature_names:
+            value = request.form.get(f'manual-{feature.lower().replace(" ", "_")}')
+            if value is None:
+                return render_template('index.html', error=f"Please provide a value for feature: {feature}", feature_names=feature_names)
+            try:
+                manual_data[feature] = [float(value)]
+            except ValueError:
+                return render_template('index.html', error=f"Invalid value entered for feature: {feature}. Please enter a numeric value.", feature_names=feature_names)
 
         input_df = pd.DataFrame(manual_data)
-        input_df = preprocess_data(input_df.copy(), for_training=False)
+
+        # Ensure all required columns from training are present, fill missing with 0 (for one-hot encoded)
         input_df = input_df.reindex(columns=feature_names, fill_value=0)
 
-        if not all(feature in input_df.columns for feature in feature_names):
-            missing_manual_features = [f for f in feature_names if f not in input_df.columns]
-            return render_template('index.html', error=f"Please provide values for all required features: {', '.join(missing_manual_features)}", feature_names=feature_names)
+        # No need to preprocess again if the manual input directly matches the expected features
 
         prediction = trained_model.predict(input_df[feature_names])[0]
         return render_template('index.html', prediction_text=f"Predicted energy consumption: {prediction:.2f}", feature_names=feature_names)
 
-    except ValueError:
-        return render_template('index.html', error="Invalid feature values entered. Please enter numeric values.", feature_names=feature_names)
     except Exception as e:
         return render_template('index.html', error=f"An error occurred during manual prediction: {str(e)}", feature_names=feature_names)
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port
